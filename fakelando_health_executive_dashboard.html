@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fakelando Health CDP — Executive Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --primary: #1a73e8;
+            --success: #34a853;
+            --warning: #fbbc04;
+            --danger: #ea4335;
+            --dark: #202124;
+            --light: #f8f9fa;
+            --card-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Google Sans', Roboto, sans-serif; background: var(--light); color: var(--dark); }
+        
+        .header {
+            background: linear-gradient(135deg, #1a73e8 0%, #4285f4 100%);
+            color: white; padding: 24px 32px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .header h1 { font-size: 24px; font-weight: 500; }
+        .header .subtitle { font-size: 14px; opacity: 0.9; margin-top: 4px; }
+        .header .badge { background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 12px; font-size: 12px; }
+        
+        .nav { display: flex; gap: 4px; background: white; padding: 8px 32px; border-bottom: 1px solid #e0e0e0; }
+        .nav button { padding: 8px 16px; border: none; background: none; cursor: pointer; font-size: 14px; font-weight: 500; color: #5f6368; border-radius: 8px; transition: all 0.2s; }
+        .nav button.active { background: #e8f0fe; color: var(--primary); }
+        .nav button:hover { background: #f1f3f4; }
+        
+        .page { display: none; padding: 24px 32px; }
+        .page.active { display: block; }
+        
+        .scorecard-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .scorecard { background: white; border-radius: 12px; padding: 20px; box-shadow: var(--card-shadow); }
+        .scorecard .label { font-size: 12px; color: #5f6368; text-transform: uppercase; letter-spacing: 0.5px; }
+        .scorecard .value { font-size: 28px; font-weight: 500; margin: 8px 0 4px; }
+        .scorecard .change { font-size: 12px; }
+        .scorecard .change.up { color: var(--success); }
+        .scorecard .change.down { color: var(--danger); }
+        
+        .chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px; margin-bottom: 24px; }
+        .chart-card { background: white; border-radius: 12px; padding: 20px; box-shadow: var(--card-shadow); }
+        .chart-card h3 { font-size: 16px; font-weight: 500; margin-bottom: 16px; color: var(--dark); }
+        .chart-card canvas { width: 100% !important; }
+        
+        .table-card { background: white; border-radius: 12px; padding: 20px; box-shadow: var(--card-shadow); margin-bottom: 24px; overflow-x: auto; }
+        .table-card h3 { font-size: 16px; font-weight: 500; margin-bottom: 16px; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th { text-align: left; padding: 10px 12px; background: #f8f9fa; font-weight: 500; color: #5f6368; border-bottom: 2px solid #e0e0e0; }
+        td { padding: 10px 12px; border-bottom: 1px solid #f1f3f4; }
+        tr:hover td { background: #f8f9fa; }
+        
+        .risk-high { color: var(--danger); font-weight: 500; }
+        .risk-medium { color: var(--warning); font-weight: 500; }
+        .risk-low { color: var(--success); font-weight: 500; }
+        
+        .alert { padding: 12px 16px; border-radius: 8px; margin-bottom: 12px; font-size: 13px; display: flex; align-items: center; gap: 8px; }
+        .alert.critical { background: #fce8e6; color: var(--danger); border-left: 4px solid var(--danger); }
+        .alert.warning { background: #fef7e0; color: #e37400; border-left: 4px solid var(--warning); }
+        .alert.notice { background: #e8f0fe; color: var(--primary); border-left: 4px solid var(--primary); }
+        
+        .patient-search { background: white; border-radius: 12px; padding: 20px; box-shadow: var(--card-shadow); margin-bottom: 24px; display: flex; gap: 12px; align-items: center; }
+        .patient-search input { flex: 1; padding: 10px 16px; border: 1px solid #dadce0; border-radius: 8px; font-size: 14px; }
+        .patient-search button { padding: 10px 24px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; }
+        .patient-search button:hover { background: #1557b0; }
+        
+        .patient-detail { display: none; background: white; border-radius: 12px; padding: 24px; box-shadow: var(--card-shadow); margin-bottom: 24px; }
+        .patient-detail.show { display: block; }
+        .patient-header { display: flex; gap: 24px; margin-bottom: 24px; flex-wrap: wrap; }
+        .patient-info { flex: 1; min-width: 200px; }
+        .patient-info .name { font-size: 20px; font-weight: 500; }
+        .patient-info .meta { color: #5f6368; font-size: 13px; margin-top: 4px; }
+        
+        .loading { text-align: center; padding: 40px; color: #5f6368; }
+        .timestamp { font-size: 11px; color: #9aa0a6; text-align: right; margin-top: 16px; }
+        
+        @media (max-width: 768px) {
+            .chart-grid { grid-template-columns: 1fr; }
+            .scorecard-row { grid-template-columns: repeat(2, 1fr); }
+            .header { flex-direction: column; gap: 12px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h1>🏥 Fakelando Health CDP</h1>
+            <div class="subtitle">Customer Data Platform — Executive Dashboard</div>
+        </div>
+        <div class="badge">BigQuery: prefab-bruin-489518-h1</div>
+    </div>
+    
+    <div class="nav">
+        <button class="active" onclick="showPage('overview')">📊 Overview</button>
+        <button onclick="showPage('patient360')">👤 Patient 360°</button>
+        <button onclick="showPage('marketing')">📈 Marketing Attribution</button>
+        <button onclick="showPage('costs')">💰 Cost Governance</button>
+    </div>
+    
+    <!-- OVERVIEW PAGE -->
+    <div id="overview" class="page active">
+        <div class="scorecard-row">
+            <div class="scorecard">
+                <div class="label">Total Patients</div>
+                <div class="value">5,000</div>
+                <div class="change up">↑ 12% from last month</div>
+            </div>
+            <div class="scorecard">
+                <div class="label">Total Visits (YTD)</div>
+                <div class="value">24,997</div>
+                <div class="change up">↑ 8% from last month</div>
+            </div>
+            <div class="scorecard">
+                <div class="label">Total Claims</div>
+                <div class="value">25,432</div>
+                <div class="change down">↓ 3% denied rate</div>
+            </div>
+            <div class="scorecard">
+                <div class="label">CDP Monthly Cost</div>
+                <div class="value">$4,073</div>
+                <div class="change">All platforms combined</div>
+            </div>
+        </div>
+        
+        <div class="chart-grid">
+            <div class="chart-card">
+                <h3>Patients by State</h3>
+                <canvas id="stateChart"></canvas>
+            </div>
+            <div class="chart-card">
+                <h3>Patient Status Distribution</h3>
+                <canvas id="statusChart"></canvas>
+            </div>
+        </div>
+        
+        <div class="chart-grid">
+            <div class="chart-card">
+                <h3>Visits by Type</h3>
+                <canvas id="visitTypeChart"></canvas>
+            </div>
+            <div class="chart-card">
+                <h3>Clinical Risk Levels</h3>
+                <canvas id="riskChart"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- PATIENT 360 PAGE -->
+    <div id="patient360" class="page">
+        <div class="patient-search">
+            <input type="text" id="patientMRN" placeholder="Enter Patient MRN (e.g., PAT-000164)" value="PAT-000164">
+            <button onclick="loadPatient()">Search Patient</button>
+        </div>
+        
+        <div id="patientDetail" class="patient-detail">
+            <div class="loading">Loading patient data...</div>
+        </div>
+        
+        <div class="chart-grid" id="patientCharts" style="display:none;">
+            <div class="chart-card">
+                <h3>Visit History (Last 12 Months)</h3>
+                <canvas id="patientVisitChart"></canvas>
+            </div>
+            <div class="chart-card">
+                <h3>Claims Status</h3>
+                <canvas id="patientClaimsChart"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- MARKETING PAGE -->
+    <div id="marketing" class="page">
+        <div class="scorecard-row">
+            <div class="scorecard">
+                <div class="label">Blended CAC</div>
+                <div class="value" id="blendedCAC">$127</div>
+                <div class="change up">↓ 15% from last quarter</div>
+            </div>
+            <div class="scorecard">
+                <div class="label">Blended LTV:CAC</div>
+                <div class="value" id="blendedLTV">8.2x</div>
+                <div class="change up">↑ 22% improvement</div>
+            </div>
+            <div class="scorecard">
+                <div class="label">Blended ROAS</div>
+                <div class="value" id="blendedROAS">14.5x</div>
+                <div class="change up">↑ 18% from last quarter</div>
+            </div>
+            <div class="scorecard">
+                <div class="label">New Patients (YTD)</div>
+                <div class="value" id="newPatients">4,847</div>
+                <div class="change up">↑ 23% from last year</div>
+            </div>
+        </div>
+        
+        <div class="chart-grid">
+            <div class="chart-card">
+                <h3>CAC by Channel</h3>
+                <canvas id="cacChart"></canvas>
+            </div>
+            <div class="chart-card">
+                <h3>LTV:CAC Ratio by Channel</h3>
+                <canvas id="ltvCacChart"></canvas>
+            </div>
+        </div>
+        
+        <div class="chart-grid">
+            <div class="chart-card">
+                <h3>Revenue Share by Channel</h3>
+                <canvas id="revenueShareChart"></canvas>
+            </div>
+            <div class="chart-card">
+                <h3>Monthly New Patients by Channel</h3>
+                <canvas id="monthlyPatientsChart"></canvas>
+            </div>
+        </div>
+        
+        <div class="table-card">
+            <h3>Channel Performance Detail</h3>
+            <table id="channelTable">
+                <thead>
+                    <tr>
+                        <th>Channel</th>
+                        <th>New Patients</th>
+                        <th>Marketing Spend</th>
+                        <th>CAC</th>
+                        <th>Avg LTV</th>
+                        <th>LTV:CAC</th>
+                        <th>ROAS</th>
+                        <th>Conversion</th>
+                        <th>Payback (mo)</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- COSTS PAGE -->
+    <div id="costs" class="page">
+        <div class="scorecard-row">
+            <div class="scorecard">
+                <div class="label">Total Monthly Cost</div>
+                <div class="value" id="totalCost">$4,073</div>
+                <div class="change up">↓ 8% from last month</div>
+            </div>
+            <div class="scorecard">
+                <div class="label">BigQuery</div>
+                <div class="value" id="bqCost">$1,158</div>
+                <div class="change">Queries + Storage</div>
+            </div>
+            <div class="scorecard">
+                <div class="label">Looker</div>
+                <div class="value" id="lookerCost">$3,000</div>
+                <div class="change">Platform + Users</div>
+            </div>
+            <div class="scorecard">
+                <div class="label">Fivetran</div>
+                <div class="value" id="fivetranCost">$337</div>
+                <div class="change">MAR-based</div>
+            </div>
+            <div class="scorecard">
+                <div class="label">Databricks</div>
+                <div class="value" id="databricksCost">$70</div>
+                <div class="change">DBU-based</div>
+            </div>
+        </div>
+        
+        <div id="costAlerts" style="margin-bottom: 24px;"></div>
+        
+        <div class="chart-grid">
+            <div class="chart-card">
+                <h3>Cost Breakdown by Platform</h3>
+                <canvas id="costPieChart"></canvas>
+            </div>
+            <div class="chart-card">
+                <h3>Daily Cost Trend</h3>
+                <canvas id="costTrendChart"></canvas>
+            </div>
+        </div>
+        
+        <div class="chart-grid">
+            <div class="chart-card">
+                <h3>Fivetran MAR by Connector</h3>
+                <canvas id="fivetranChart"></canvas>
+            </div>
+            <div class="chart-card">
+                <h3>Databricks Cost by Compute Type</h3>
+                <canvas id="databricksChart"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <div class="timestamp" id="timestamp"></div>
+
+    <script>
+        // Navigation
+        function showPage(pageId) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+            event.target.classList.add('active');
+        }
+        
+        // Chart defaults
+        Chart.defaults.font.family = "'Google Sans', Roboto, sans-serif";
+        Chart.defaults.font.size = 12;
+        
+        // Sample data (would be replaced with BigQuery API calls)
+        const stateData = {
+            labels: ['TX', 'CA', 'FL', 'NY', 'PA', 'OH', 'Other'],
+            datasets: [{
+                data: [1200, 980, 850, 720, 450, 380, 420],
+                backgroundColor: ['#1a73e8', '#34a853', '#fbbc04', '#ea4335', '#9c27b0', '#00bcd4', '#ff9800']
+            }]
+        };
+        
+        new Chart(document.getElementById('stateChart'), {
+            type: 'bar',
+            data: stateData,
+            options: { responsive: true, plugins: { legend: { display: false } } }
+        });
+        
+        new Chart(document.getElementById('statusChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Active', 'Established', 'Inactive'],
+                datasets: [{ data: [1800, 1750, 1450], backgroundColor: ['#34a853', '#1a73e8', '#ea4335'] }]
+            },
+            options: { responsive: true, plugins: { legend: { position: 'right' } } }
+        });
+        
+        new Chart(document.getElementById('visitTypeChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Office Visit', 'Telehealth', 'Urgent Care', 'ER Visit', 'Inpatient'],
+                datasets: [{
+                    label: 'Visits',
+                    data: [9800, 6200, 3500, 3200, 2297],
+                    backgroundColor: ['#1a73e8', '#34a853', '#fbbc04', '#ea4335', '#9c27b0']
+                }]
+            },
+            options: { responsive: true, indexAxis: 'y', plugins: { legend: { display: false } } }
+        });
+        
+        new Chart(document.getElementById('riskChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['High Risk', 'Medium Risk', 'Low Risk'],
+                datasets: [{ data: [1800, 2000, 1200], backgroundColor: ['#ea4335', '#fbbc04', '#34a853'] }]
+            },
+            options: { responsive: true, plugins: { legend: { position: 'right' } } }
+        });
+        
+        // Marketing charts
+        const channels = ['Paid Search', 'Organic Search', 'Paid Social', 'Email', 'Direct', 'Referral'];
+        
+        new Chart(document.getElementById('cacChart'), {
+            type: 'bar',
+            data: {
+                labels: channels,
+                datasets: [{
+                    label: 'CAC ($)',
+                    data: [285, 42, 178, 28, 52, 38],
+                    backgroundColor: ['#ea4335', '#34a853', '#fbbc04', '#1a73e8', '#9c27b0', '#00bcd4']
+                }]
+            },
+            options: { responsive: true, plugins: { legend: { display: false } } }
+        });
+        
+        new Chart(document.getElementById('ltvCacChart'), {
+            type: 'bar',
+            data: {
+                labels: channels,
+                datasets: [{
+                    label: 'LTV:CAC Ratio',
+                    data: [4.2, 22.5, 5.8, 32.1, 18.3, 25.6],
+                    backgroundColor: ['#34a853', '#34a853', '#34a853', '#34a853', '#34a853', '#34a853']
+                }]
+            },
+            options: { responsive: true, plugins: { legend: { display: false }, annotation: { annotations: { targetLine: { type: 'line', yMin: 3, yMax: 3, borderColor: '#ea4335', borderWidth: 2, label: { display: true, content: 'Target 3:1', position: 'end' } } } } } }
+        });
+        
+        new Chart(document.getElementById('revenueShareChart'), {
+            type: 'pie',
+            data: {
+                labels: channels,
+                datasets: [{
+                    data: [28, 22, 18, 12, 15, 5],
+                    backgroundColor: ['#ea4335', '#34a853', '#fbbc04', '#1a73e8', '#9c27b0', '#00bcd4']
+                }]
+            },
+            options: { responsive: true, plugins: { legend: { position: 'right' } } }
+        });
+        
+        new Chart(document.getElementById('monthlyPatientsChart'), {
+            type: 'line',
+            data: {
+                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                datasets: channels.map((ch, i) => ({
+                    label: ch,
+                    data: [80 + i*20, 85 + i*20, 90 + i*25, 95 + i*25, 100 + i*30, 105 + i*30],
+                    borderColor: ['#ea4335', '#34a853', '#fbbc04', '#1a73e8', '#9c27b0', '#00bcd4'][i],
+                    fill: false,
+                    tension: 0.3
+                }))
+            },
+            options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+        });
+        
+        // Channel table
+        const channelData = [
+            ['Paid Search', '892', '$254K', '$285', '$1,200', '4.2x', '4.2x', '3.8%', '2.8'],
+            ['Organic Search', '1245', '$52K', '$42', '$950', '22.5x', '22.5x', '92.3%', '0.5'],
+            ['Paid Social', '678', '$121K', '$178', '$1,035', '5.8x', '5.8x', '88.9%', '2.1'],
+            ['Email', '456', '$13K', '$28', '$900', '32.1x', '32.1x', '95.2%', '0.4'],
+            ['Direct', '534', '$28K', '$52', '$950', '18.3x', '18.3x', '89.1%', '0.7'],
+            ['Referral', '1042', '$40K', '$38', '$975', '25.6x', '25.6x', '91.8%', '0.5']
+        ];
+        const tbody = document.querySelector('#channelTable tbody');
+        channelData.forEach(row => {
+            tbody.innerHTML += `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`;
+        });
+        
+        // Cost charts
+        new Chart(document.getElementById('costPieChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['BigQuery', 'Looker', 'Fivetran', 'Databricks'],
+                datasets: [{ data: [1158, 3000, 337, 70], backgroundColor: ['#4285f4', '#ea4335', '#34a853', '#ff6f00'] }]
+            },
+            options: { responsive: true, plugins: { legend: { position: 'right' } } }
+        });
+        
+        new Chart(document.getElementById('costTrendChart'), {
+            type: 'line',
+            data: {
+                labels: ['Jul 14', 'Jul 13', 'Jul 12', 'Jul 11', 'Jul 10', 'Jul 8', 'Jul 7'],
+                datasets: [
+                    { label: 'BigQuery', data: [3.92, 15.88, 20.67, 13.25, 9.74, 16.68, 8.45], borderColor: '#4285f4', fill: false },
+                    { label: 'Databricks', data: [70.47, 30.41, 0, 0, 0, 0, 0], borderColor: '#ff6f00', fill: false },
+                    { label: 'Fivetran', data: [337.50, 0, 0, 0, 0, 0, 0], borderColor: '#34a853', fill: false },
+                    { label: 'Looker', data: [3000, 0, 0, 0, 0, 0, 0], borderColor: '#ea4335', fill: false }
+                ]
+            },
+            options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+        });
+        
+        new Chart(document.getElementById('fivetranChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Salesforce', 'HubSpot', 'Stripe', 'GA4', 'PostgreSQL'],
+                datasets: [{
+                    label: 'MAR (K)',
+                    data: [150, 80, 45, 220, 180],
+                    backgroundColor: ['#34a853', '#ea4335', '#4285f4', '#fbbc04', '#9c27b0']
+                }]
+            },
+            options: { responsive: true, plugins: { legend: { display: false } } }
+        });
+        
+        new Chart(document.getElementById('databricksChart'), {
+            type: 'bar',
+            data: {
+                labels: ['SQL Warehouse', 'Job Clusters', 'Model Serving'],
+                datasets: [{
+                    label: 'Cost ($)',
+                    data: [17.16, 44.87, 8.44],
+                    backgroundColor: ['#4285f4', '#34a853', '#ea4335']
+                }]
+            },
+            options: { responsive: true, plugins: { legend: { display: false } } }
+        });
+        
+        // Cost alerts
+        const alerts = [
+            { level: 'critical', icon: '🔴', text: 'Databricks cost spiked 131% above 7-day average (Jul 14)' },
+            { level: 'warning', icon: '🟡', text: 'BigQuery cost 83% above 7-day average (Jun 24)' },
+            { level: 'notice', icon: '🔵', text: 'BigQuery cost 43% above 30-day average (Jul 3)' }
+        ];
+        const alertsDiv = document.getElementById('costAlerts');
+        alerts.forEach(a => {
+            alertsDiv.innerHTML += `<div class="alert ${a.level}"><span>${a.icon}</span> ${a.text}</div>`;
+        });
+        
+        // Patient 360 mock data
+        const patientData = {
+            'PAT-000164': {
+                name: 'John Doe', gender: 'M', age: 5, state: 'TX', insurance: 'Commercial',
+                risk: 'High', condition: 'Heart Failure', status: 'Active',
+                visits: 9, billed: 4546, claims: 9, paid: 1993, paymentRate: 44.1,
+                lastVisit: '2025-12-24', providers: 6,
+                visitHistory: [
+                    { date: '2025-07', visits: 1, charges: 487 },
+                    { date: '2025-08', visits: 2, charges: 1200 },
+                    { date: '2025-09', visits: 1, charges: 350 },
+                    { date: '2025-10', visits: 1, charges: 680 },
+                    { date: '2025-11', visits: 1, charges: 290 },
+                    { date: '2025-12', visits: 2, charges: 1539 }
+                ],
+                claims: { paid: 4, pending: 3, denied: 2 }
+            }
+        };
+        
+        let patientVisitChart = null;
+        let patientClaimsChart = null;
+        
+        function loadPatient() {
+            const mrn = document.getElementById('patientMRN').value;
+            const p = patientData[mrn];
+            if (!p) {
+                document.getElementById('patientDetail').innerHTML = `
+                    <div class="alert warning">Patient ${mrn} not found in demo data. 
+                    Try PAT-000164 or sign up for Looker Studio to query the full dataset.</div>`;
+                return;
+            }
+            
+            const riskClass = p.risk === 'High' ? 'risk-high' : p.risk === 'Medium' ? 'risk-medium' : 'risk-low';
+            
+            document.getElementById('patientDetail').innerHTML = `
+                <div class="patient-header">
+                    <div class="patient-info">
+                        <div class="name">${p.name}</div>
+                        <div class="meta">${mrn} • ${p.gender} • Age ${p.age} • ${p.state}</div>
+                    </div>
+                    <div class="scorecard" style="min-width:150px;">
+                        <div class="label">Risk Level</div>
+                        <div class="value ${riskClass}">${p.risk}</div>
+                    </div>
+                    <div class="scorecard" style="min-width:150px;">
+                        <div class="label">Insurance</div>
+                        <div class="value">${p.insurance}</div>
+                    </div>
+                    <div class="scorecard" style="min-width:150px;">
+                        <div class="label">Condition</div>
+                        <div class="value" style="font-size:16px;">${p.condition}</div>
+                    </div>
+                </div>
+                <div class="scorecard-row">
+                    <div class="scorecard">
+                        <div class="label">Total Visits</div>
+                        <div class="value">${p.visits}</div>
+                    </div>
+                    <div class="scorecard">
+                        <div class="label">Total Billed</div>
+                        <div class="value">$${p.billed.toLocaleString()}</div>
+                    </div>
+                    <div class="scorecard">
+                        <div class="label">Claims</div>
+                        <div class="value">${p.claims}</div>
+                    </div>
+                    <div class="scorecard">
+                        <div class="label">Payment Rate</div>
+                        <div class="value">${p.paymentRate}%</div>
+                    </div>
+                    <div class="scorecard">
+                        <div class="label">Last Visit</div>
+                        <div class="value" style="font-size:16px;">${p.lastVisit}</div>
+                    </div>
+                    <div class="scorecard">
+                        <div class="label">Providers</div>
+                        <div class="value">${p.providers}</div>
+                    </div>
+                </div>`;
+            
+            document.getElementById('patientCharts').style.display = 'grid';
+            
+            // Visit history chart
+            if (patientVisitChart) patientVisitChart.destroy();
+            patientVisitChart = new Chart(document.getElementById('patientVisitChart'), {
+                type: 'bar',
+                data: {
+                    labels: p.visitHistory.map(v => v.date),
+                    datasets: [{
+                        label: 'Charges ($)',
+                        data: p.visitHistory.map(v => v.charges),
+                        backgroundColor: '#1a73e8',
+                        yAxisID: 'y'
+                    }, {
+                        label: 'Visits',
+                        data: p.visitHistory.map(v => v.visits),
+                        type: 'line',
+                        borderColor: '#ea4335',
+                        yAxisID: 'y1',
+                        fill: false,
+                        tension: 0.3
+                    }]
+                },
+                options: { responsive: true, scales: { y: { beginAtZero: true, position: 'left' }, y1: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false } } } }
+            });
+            
+            // Claims chart
+            if (patientClaimsChart) patientClaimsChart.destroy();
+            patientClaimsChart = new Chart(document.getElementById('patientClaimsChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Paid', 'Pending', 'Denied'],
+                    datasets: [{ data: [p.claims.paid, p.claims.pending, p.claims.denied], backgroundColor: ['#34a853', '#fbbc04', '#ea4335'] }]
+                },
+                options: { responsive: true, plugins: { legend: { position: 'right' } } }
+            });
+        }
+        
+        // Set timestamp
+        document.getElementById('timestamp').textContent = `Last updated: ${new Date().toLocaleString()}`;
+        
+        // Load initial patient
+        loadPatient();
+    </script>
+</body>
+</html>

@@ -1,0 +1,243 @@
+{
+  "name": "Fakelando Health - CDP Cost Governance Dashboard",
+  "description": "Unified cost monitoring across BigQuery, Looker, Fivetran, and Databricks",
+  "pages": [
+    {
+      "name": "Executive Summary",
+      "charts": [
+        {
+          "type": "SCORECARD",
+          "title": "Total Monthly CDP Cost",
+          "dataSource": "monthly_cost_trends",
+          "metric": "SUM(monthly_cost_usd)",
+          "filters": [{"field": "cost_month", "operator": "EQUALS", "value": "CURRENT_MONTH"}],
+          "comparisonPeriod": "PREVIOUS_MONTH"
+        },
+        {
+          "type": "SCORECARD",
+          "title": "BigQuery Query Costs",
+          "dataSource": "monthly_cost_trends",
+          "metric": "SUM(monthly_cost_usd)",
+          "filters": [{"field": "platform", "operator": "EQUALS", "value": "BigQuery"}, {"field": "cost_month", "operator": "EQUALS", "value": "CURRENT_MONTH"}],
+          "comparisonPeriod": "PREVIOUS_MONTH"
+        },
+        {
+          "type": "SCORECARD",
+          "title": "Databricks Compute Costs",
+          "dataSource": "monthly_cost_trends",
+          "metric": "SUM(monthly_cost_usd)",
+          "filters": [{"field": "platform", "operator": "EQUALS", "value": "Databricks"}, {"field": "cost_month", "operator": "EQUALS", "value": "CURRENT_MONTH"}],
+          "comparisonPeriod": "PREVIOUS_MONTH"
+        },
+        {
+          "type": "SCORECARD",
+          "title": "Fivetran MAR Costs",
+          "dataSource": "monthly_cost_trends",
+          "metric": "SUM(monthly_cost_usd)",
+          "filters": [{"field": "platform", "operator": "EQUALS", "value": "Fivetran"}, {"field": "cost_month", "operator": "EQUALS", "value": "CURRENT_MONTH"}],
+          "comparisonPeriod": "PREVIOUS_MONTH"
+        },
+        {
+          "type": "SCORECARD",
+          "title": "Looker Platform Costs",
+          "dataSource": "monthly_cost_trends",
+          "metric": "SUM(monthly_cost_usd)",
+          "filters": [{"field": "platform", "operator": "EQUALS", "value": "Looker"}, {"field": "cost_month", "operator": "EQUALS", "value": "CURRENT_MONTH"}],
+          "comparisonPeriod": "PREVIOUS_MONTH"
+        },
+        {
+          "type": "PIE",
+          "title": "Cost Breakdown by Platform (Current Month)",
+          "dataSource": "monthly_cost_trends",
+          "dimension": "platform",
+          "metric": "SUM(monthly_cost_usd)",
+          "filters": [{"field": "cost_month", "operator": "EQUALS", "value": "CURRENT_MONTH"}]
+        }
+      ]
+    },
+    {
+      "name": "Platform Deep Dive",
+      "charts": [
+        {
+          "type": "TIME_SERIES",
+          "title": "Monthly Cost Trend by Platform (12 Months)",
+          "dataSource": "monthly_cost_trends",
+          "dimension": "cost_month",
+          "metric": "SUM(monthly_cost_usd)",
+          "breakdownDimension": "platform"
+        },
+        {
+          "type": "STACKED_BAR",
+          "title": "Monthly Cost Stack by Platform",
+          "dataSource": "monthly_cost_trends",
+          "dimension": "cost_month",
+          "metric": "SUM(monthly_cost_usd)",
+          "breakdownDimension": "platform"
+        },
+        {
+          "type": "TABLE",
+          "title": "Platform Cost Detail",
+          "dataSource": "monthly_cost_trends",
+          "dimensions": ["cost_month", "platform"],
+          "metrics": ["monthly_cost_usd", "active_days"],
+          "sort": [{"field": "cost_month", "direction": "DESCENDING"}]
+        }
+      ]
+    },
+    {
+      "name": "BigQuery Optimization",
+      "charts": [
+        {
+          "type": "SCORECARD",
+          "title": "Queries This Month",
+          "dataSource": "bq_query_costs",
+          "metric": "COUNT(job_id)",
+          "filters": [{"field": "cost_date", "operator": "GREATER_THAN_OR_EQUAL", "value": "FIRST_DAY_OF_MONTH"}]
+        },
+        {
+          "type": "SCORECARD",
+          "title": "TB Billed This Month",
+          "dataSource": "bq_query_costs",
+          "metric": "SUM(tb_billed)",
+          "filters": [{"field": "cost_date", "operator": "GREATER_THAN_OR_EQUAL", "value": "FIRST_DAY_OF_MONTH"}]
+        },
+        {
+          "type": "SCORECARD",
+          "title": "Estimated Query Cost",
+          "dataSource": "bq_query_costs",
+          "metric": "SUM(estimated_cost_usd)",
+          "filters": [{"field": "cost_date", "operator": "GREATER_THAN_OR_EQUAL", "value": "FIRST_DAY_OF_MONTH"}]
+        },
+        {
+          "type": "SCORECARD",
+          "title": "High-Cost Queries (>$50)",
+          "dataSource": "bq_query_costs",
+          "metric": "COUNT(job_id)",
+          "filters": [{"field": "estimated_cost_usd", "operator": "GREATER_THAN", "value": "50"}, {"field": "cost_date", "operator": "GREATER_THAN_OR_EQUAL", "value": "FIRST_DAY_OF_MONTH"}]
+        },
+        {
+          "type": "TABLE",
+          "title": "Top 20 Most Expensive Queries",
+          "dataSource": "bq_query_costs",
+          "dimensions": ["cost_date", "user_email", "job_id"],
+          "metrics": ["tb_billed", "estimated_cost_usd", "slot_hours"],
+          "filters": [{"field": "cost_date", "operator": "GREATER_THAN_OR_EQUAL", "value": "FIRST_DAY_OF_MONTH"}],
+          "sort": [{"field": "estimated_cost_usd", "direction": "DESCENDING"}],
+          "rowLimit": 20
+        },
+        {
+          "type": "BAR",
+          "title": "Cost by User (Top 10)",
+          "dataSource": "bq_query_costs",
+          "dimension": "user_email",
+          "metric": "SUM(estimated_cost_usd)",
+          "filters": [{"field": "cost_date", "operator": "GREATER_THAN_OR_EQUAL", "value": "FIRST_DAY_OF_MONTH"}],
+          "sort": [{"field": "SUM(estimated_cost_usd)", "direction": "DESCENDING"}],
+          "rowLimit": 10
+        },
+        {
+          "type": "TABLE",
+          "title": "Storage Costs by Dataset",
+          "dataSource": "bq_storage_costs",
+          "dimensions": ["dataset", "table_name"],
+          "metrics": ["size_gb", "estimated_monthly_cost_usd", "row_count"],
+          "sort": [{"field": "size_gb", "direction": "DESCENDING"}],
+          "rowLimit": 30
+        }
+      ]
+    },
+    {
+      "name": "Fivetran & Databricks",
+      "charts": [
+        {
+          "type": "TABLE",
+          "title": "Fivetran Connector Costs",
+          "dataSource": "fivetran_costs_view",
+          "dimensions": ["cost_date", "connector"],
+          "metrics": ["monthly_active_rows", "estimated_cost_usd", "sync_frequency_minutes", "destination"],
+          "sort": [{"field": "estimated_cost_usd", "direction": "DESCENDING"}]
+        },
+        {
+          "type": "BAR",
+          "title": "Fivetran MAR by Connector",
+          "dataSource": "fivetran_costs_view",
+          "dimension": "connector",
+          "metric": "SUM(monthly_active_rows)",
+          "filters": [{"field": "cost_date", "operator": "EQUALS", "value": "CURRENT_DATE"}]
+        },
+        {
+          "type": "TABLE",
+          "title": "Databricks Compute Costs",
+          "dataSource": "databricks_costs_view",
+          "dimensions": ["cost_date", "compute_type", "instance_name"],
+          "metrics": ["dbu_hours", "estimated_cost_usd", "worker_count", "usage_hours"],
+          "sort": [{"field": "estimated_cost_usd", "direction": "DESCENDING"}]
+        },
+        {
+          "type": "BAR",
+          "title": "Databricks Cost by Compute Type",
+          "dataSource": "databricks_costs_view",
+          "dimension": "compute_type",
+          "metric": "SUM(estimated_cost_usd)",
+          "filters": [{"field": "cost_date", "operator": "EQUALS", "value": "CURRENT_DATE"}]
+        },
+        {
+          "type": "TIME_SERIES",
+          "title": "Databricks Daily Cost Trend",
+          "dataSource": "databricks_costs_view",
+          "dimension": "cost_date",
+          "metric": "SUM(estimated_cost_usd)",
+          "breakdownDimension": "compute_type"
+        }
+      ]
+    },
+    {
+      "name": "Alerts & Anomalies",
+      "charts": [
+        {
+          "type": "TABLE",
+          "title": "Cost Anomalies (Last 30 Days)",
+          "dataSource": "cost_alerts",
+          "dimensions": ["cost_date", "platform", "alert_level"],
+          "metrics": ["daily_cost", "avg_7day_cost", "pct_change_from_7day_avg"],
+          "sort": [{"field": "cost_date", "direction": "DESCENDING"}, {"field": "pct_change_from_7day_avg", "direction": "DESCENDING"}]
+        },
+        {
+          "type": "SCORECARD",
+          "title": "Active Alerts",
+          "dataSource": "cost_alerts",
+          "metric": "COUNT(cost_date)",
+          "filters": [{"field": "alert_level", "operator": "CONTAINS", "value": "CRITICAL"}]
+        },
+        {
+          "type": "SCORECARD",
+          "title": "Warnings",
+          "dataSource": "cost_alerts",
+          "metric": "COUNT(cost_date)",
+          "filters": [{"field": "alert_level", "operator": "CONTAINS", "value": "WARNING"}]
+        },
+        {
+          "type": "TIME_SERIES",
+          "title": "Daily Cost by Platform with Alert Thresholds",
+          "dataSource": "daily_cost_summary",
+          "dimension": "cost_date",
+          "metric": "SUM(daily_cost_usd)",
+          "breakdownDimension": "platform"
+        }
+      ]
+    }
+  ],
+  "parameters": [
+    {
+      "name": "date_range",
+      "type": "DATE_RANGE",
+      "defaultValue": {"startDate": "2025-01-01", "endDate": "2026-12-31"}
+    }
+  ],
+  "theme": {
+    "primaryColor": "#ea4335",
+    "secondaryColor": "#fbbc04",
+    "backgroundColor": "#ffffff",
+    "fontFamily": "Roboto"
+  }
+}

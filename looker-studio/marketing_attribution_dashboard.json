@@ -1,0 +1,211 @@
+{
+  "name": "Fakelando Health - Marketing Attribution Dashboard",
+  "description": "CAC, LTV, ROAS, and Cohort Retention by Channel",
+  "pages": [
+    {
+      "name": "Channel Performance Overview",
+      "charts": [
+        {
+          "type": "SCORECARD",
+          "title": "Total Marketing Spend",
+          "dataSource": "channel_performance",
+          "metric": "SUM(marketing_spend)",
+          "comparisonPeriod": "PREVIOUS_MONTH"
+        },
+        {
+          "type": "SCORECARD",
+          "title": "New Patients Acquired",
+          "dataSource": "channel_performance",
+          "metric": "SUM(new_patients)",
+          "comparisonPeriod": "PREVIOUS_MONTH"
+        },
+        {
+          "type": "SCORECARD",
+          "title": "Blended CAC",
+          "dataSource": "channel_performance",
+          "metric": "AVG(cac)",
+          "comparisonPeriod": "PREVIOUS_MONTH"
+        },
+        {
+          "type": "SCORECARD",
+          "title": "Blended LTV:CAC Ratio",
+          "dataSource": "channel_performance",
+          "metric": "AVG(ltv_cac_ratio)",
+          "comparisonPeriod": "PREVIOUS_MONTH"
+        },
+        {
+          "type": "SCORECARD",
+          "title": "Blended ROAS",
+          "dataSource": "channel_performance",
+          "metric": "AVG(roas)",
+          "comparisonPeriod": "PREVIOUS_MONTH"
+        },
+        {
+          "type": "BAR",
+          "title": "CAC by Channel",
+          "dataSource": "channel_performance",
+          "dimension": "acquisition_channel",
+          "metric": "AVG(cac)",
+          "sort": [{"field": "cac", "direction": "ASCENDING"}]
+        },
+        {
+          "type": "BAR",
+          "title": "LTV:CAC Ratio by Channel",
+          "dataSource": "channel_performance",
+          "dimension": "acquisition_channel",
+          "metric": "AVG(ltv_cac_ratio)",
+          "referenceLines": [{"value": 3, "label": "Target 3:1"}]
+        },
+        {
+          "type": "SCATTER",
+          "title": "LTV vs CAC by Channel",
+          "dataSource": "channel_performance",
+          "xAxis": "AVG(cac)",
+          "yAxis": "AVG(avg_ltv)",
+          "series": "acquisition_channel",
+          "size": "SUM(new_patients)"
+        }
+      ]
+    },
+    {
+      "name": "ROAS & Efficiency",
+      "charts": [
+        {
+          "type": "BAR",
+          "title": "ROAS by Channel",
+          "dataSource": "channel_performance",
+          "dimension": "acquisition_channel",
+          "metric": "AVG(roas)",
+          "referenceLines": [{"value": 3, "label": "Target 3x"}]
+        },
+        {
+          "type": "TABLE",
+          "title": "Channel Performance Detail",
+          "dataSource": "channel_performance",
+          "dimensions": [
+            "acquisition_channel",
+            "acquisition_source",
+            "acquisition_medium",
+            "acquisition_campaign",
+            "cohort_month"
+          ],
+          "metrics": [
+            "new_patients",
+            "marketing_spend",
+            "cac",
+            "avg_ltv",
+            "ltv_cac_ratio",
+            "roas",
+            "conversion_rate",
+            "ctr_pct",
+            "payback_months"
+          ],
+          "sort": [{"field": "roas", "direction": "DESCENDING"}],
+          "rowLimit": 50
+        },
+        {
+          "type": "TIME_SERIES",
+          "title": "Monthly Marketing Spend by Channel",
+          "dataSource": "channel_performance",
+          "dimension": "cohort_month",
+          "metric": "SUM(marketing_spend)",
+          "breakdownDimension": "acquisition_channel"
+        },
+        {
+          "type": "TIME_SERIES",
+          "title": "Monthly New Patients by Channel",
+          "dataSource": "channel_performance",
+          "dimension": "cohort_month",
+          "metric": "SUM(new_patients)",
+          "breakdownDimension": "acquisition_channel"
+        }
+      ]
+    },
+    {
+      "name": "Cohort Retention",
+      "charts": [
+        {
+          "type": "HEATMAP",
+          "title": "Retention Heatmap by Cohort & Channel",
+          "dataSource": "cohort_retention",
+          "dimension": "months_since_cohort",
+          "metric": "retention_rate_pct",
+          "breakdownDimension": "cohort_month",
+          "filter": [{"field": "acquisition_channel", "operator": "EQUALS", "value": "Paid Search"}]
+        },
+        {
+          "type": "LINE",
+          "title": "Retention Curves by Channel",
+          "dataSource": "cohort_retention",
+          "dimension": "months_since_cohort",
+          "metric": "retention_rate_pct",
+          "series": "acquisition_channel",
+          "filters": [{"field": "cohort_month", "operator": "GREATER_THAN_OR_EQUAL", "value": "2025-01"}]
+        },
+        {
+          "type": "TABLE",
+          "title": "Retention Rates Detail",
+          "dataSource": "cohort_retention",
+          "dimensions": ["cohort_month", "acquisition_channel", "months_since_cohort"],
+          "metrics": ["cohort_size", "active_patients", "retention_rate_pct"],
+          "sort": [{"field": "cohort_month", "direction": "DESCENDING"}, {"field": "months_since_cohort", "direction": "ASCENDING"}]
+        }
+      ]
+    },
+    {
+      "name": "Revenue Attribution",
+      "charts": [
+        {
+          "type": "PIE",
+          "title": "Revenue Share by Channel",
+          "dataSource": "revenue_attribution",
+          "dimension": "acquisition_channel",
+          "metric": "attributed_revenue"
+        },
+        {
+          "type": "BAR",
+          "title": "Attributed Revenue by Channel & Campaign",
+          "dataSource": "revenue_attribution",
+          "dimension": "acquisition_campaign",
+          "metric": "attributed_revenue",
+          "breakdownDimension": "acquisition_channel",
+          "sort": [{"field": "attributed_revenue", "direction": "DESCENDING"}],
+          "rowLimit": 20
+        },
+        {
+          "type": "TABLE",
+          "title": "Full Attribution Detail",
+          "dataSource": "revenue_attribution",
+          "dimensions": [
+            "acquisition_channel",
+            "acquisition_source",
+            "acquisition_medium",
+            "acquisition_campaign",
+            "cohort_month"
+          ],
+          "metrics": [
+            "attributed_patients",
+            "attributed_revenue",
+            "avg_revenue_per_patient",
+            "revenue_share_pct",
+            "cumulative_revenue_share_pct"
+          ],
+          "sort": [{"field": "attributed_revenue", "direction": "DESCENDING"}]
+        }
+      ]
+    }
+  ],
+  "parameters": [
+    {
+      "name": "date_range",
+      "type": "DATE_RANGE",
+      "defaultValue": {"startDate": "2025-01-01", "endDate": "2026-12-31"}
+    }
+  ],
+  "theme": {
+    "primaryColor": "#1a73e8",
+    "secondaryColor": "#34a853",
+    "backgroundColor": "#ffffff",
+    "fontFamily": "Roboto"
+  }
+}

@@ -1,0 +1,147 @@
+{
+  "name": "Fakelando Health - Patient 360° Dashboard",
+  "description": "Embedded patient dashboard for call center agents and providers",
+  "pages": [
+    {
+      "name": "Patient Overview",
+      "charts": [
+        {
+          "type": "SCORECARD",
+          "title": "Patient MRN",
+          "dataSource": "patient_360_view",
+          "metric": "patient_mrn",
+          "filters": [{"field": "patient_mrn", "operator": "EQUALS", "value": "@patient_mrn"}]
+        },
+        {
+          "type": "SCORECARD",
+          "title": "Age / Gender",
+          "dataSource": "patient_360_view",
+          "metric": "age",
+          "dimension": "gender"
+        },
+        {
+          "type": "SCORECARD",
+          "title": "Clinical Risk Level",
+          "dataSource": "patient_360_view",
+          "metric": "clinical_risk_level",
+          "style": {
+            "backgroundColor": {
+              "High": "#ff4444",
+              "Medium": "#ffaa00",
+              "Low": "#44aa44"
+            }
+          }
+        },
+        {
+          "type": "SCORECARD",
+          "title": "Insurance",
+          "dataSource": "patient_360_view",
+          "metric": "insurance_type"
+        },
+        {
+          "type": "SCORECARD",
+          "title": "Primary Chronic Condition",
+          "dataSource": "patient_360_view",
+          "metric": "primary_chronic_condition"
+        },
+        {
+          "type": "SCORECARD",
+          "title": "Patient Status",
+          "dataSource": "patient_360_view",
+          "metric": "patient_status"
+        }
+      ]
+    },
+    {
+      "name": "Visit History",
+      "charts": [
+        {
+          "type": "TIME_SERIES",
+          "title": "Visits Over Time",
+          "dataSource": "visits",
+          "dimension": "visit_date",
+          "metric": "visit_charges",
+          "filters": [{"field": "patient_mrn", "operator": "EQUALS", "value": "@patient_mrn"}],
+          "breakdownDimension": "visit_type"
+        },
+        {
+          "type": "BAR",
+          "title": "Visits by Type",
+          "dataSource": "visits",
+          "dimension": "visit_type",
+          "metric": "COUNT(visit_id)",
+          "filters": [{"field": "patient_mrn", "operator": "EQUALS", "value": "@patient_mrn"}]
+        },
+        {
+          "type": "TABLE",
+          "title": "Recent Visits",
+          "dataSource": "visits",
+          "dimensions": ["visit_date", "visit_type", "visit_reason", "primary_diagnosis_code", "visit_charges", "visit_status"],
+          "filters": [{"field": "patient_mrn", "operator": "EQUALS", "value": "@patient_mrn"}],
+          "sort": [{"field": "visit_date", "direction": "DESCENDING"}],
+          "rowLimit": 20
+        }
+      ]
+    },
+    {
+      "name": "Claims & Billing",
+      "charts": [
+        {
+          "type": "SCORECARD",
+          "title": "Total Claims",
+          "dataSource": "claims",
+          "metric": "COUNT(claim_id)",
+          "filters": [{"field": "patient_mrn", "operator": "EQUALS", "value": "@patient_mrn"}]
+        },
+        {
+          "type": "SCORECARD",
+          "title": "Payment Rate",
+          "dataSource": "claims",
+          "metric": "payment_rate_pct",
+          "filters": [{"field": "patient_mrn", "operator": "EQUALS", "value": "@patient_mrn"}]
+        },
+        {
+          "type": "PIE",
+          "title": "Claims Status",
+          "dataSource": "claims",
+          "dimension": "claim_status",
+          "metric": "COUNT(claim_id)",
+          "filters": [{"field": "patient_mrn", "operator": "EQUALS", "value": "@patient_mrn"}]
+        },
+        {
+          "type": "TABLE",
+          "title": "Recent Claims",
+          "dataSource": "claims",
+          "dimensions": ["service_date", "billed_amount", "paid_amount", "claim_status", "payer_name"],
+          "filters": [{"field": "patient_mrn", "operator": "EQUALS", "value": "@patient_mrn"}],
+          "sort": [{"field": "service_date", "direction": "DESCENDING"}],
+          "rowLimit": 20
+        }
+      ]
+    },
+    {
+      "name": "Chronic Conditions",
+      "charts": [
+        {
+          "type": "TABLE",
+          "title": "Condition Timeline",
+          "dataSource": "patient_360_view",
+          "dimensions": ["primary_diagnosis_code", "diagnosis_description", "occurrence_count", "first_occurrence", "last_occurrence"],
+          "filters": [{"field": "patient_mrn", "operator": "EQUALS", "value": "@patient_mrn"}]
+        }
+      ]
+    }
+  ],
+  "parameters": [
+    {
+      "name": "patient_mrn",
+      "type": "STRING",
+      "defaultValue": "PAT-000164"
+    }
+  ],
+  "theme": {
+    "primaryColor": "#1a73e8",
+    "backgroundColor": "#ffffff",
+    "fontFamily": "Roboto"
+  }
+}
