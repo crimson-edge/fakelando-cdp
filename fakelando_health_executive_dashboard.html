@@ -264,9 +264,9 @@
         
         [
             ['CRITICAL','🔴','Jul 11: BigQuery daily cost $21.30 — 87% above 7-day avg ($11.43)'],
-            ['CRITICAL','🔴','Jul 14: Databricks spiked to $5.80 — 86% above 7-day avg ($3.10)'],
+            ['CRITICAL','🔴','Jul 11: Databricks spiked to $5.80 — 86% above 7-day avg ($3.10)'],
             ['WARNING','🟡','Jul 14: Databricks cost dropped to $2.20 — 36% below 7-day avg ($3.10)'],
-            ['NOTICE','🔵','Looker flat at $100/day — review user count or downgrade to Viewer tier']
+            ['NOTICE','🔵','Looker flat at $3.33/day ($100/mo subscription) — review user count or downgrade to Viewer tier']
         ].forEach(a => { document.getElementById('costAlerts').innerHTML += `<div class="alert ${a[0].toLowerCase()}"><span>${a[1]}</span> ${a[2]}</div>`; });
 
         // ===== PATIENT 360 DATA =====
